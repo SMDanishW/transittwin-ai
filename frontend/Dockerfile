@@ -7,6 +7,11 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+<<<<<<< HEAD
+=======
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+>>>>>>> 3e2bbc2 (feat(deployment): add AWS EC2 CI/CD and production deployment infrastructure)
 RUN npm run build
 
 FROM node:20-alpine AS runner

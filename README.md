@@ -77,7 +77,12 @@ A real-time digital twin for HSL public transport in the Helsinki metropolitan a
 **Infrastructure**
 - PostgreSQL 16 + PostGIS 3.4
 - Redis 7
+<<<<<<< HEAD
 - Docker Compose (local) / AWS EKS (production)
+=======
+- Nginx reverse proxy
+- Docker Compose — local dev and EC2 production deployment
+>>>>>>> 3e2bbc2 (feat(deployment): add AWS EC2 CI/CD and production deployment infrastructure)
 
 ---
 
@@ -218,7 +223,21 @@ transit-twin-ai/
 │   ├── Dockerfile
 │   └── next.config.ts
 │
+<<<<<<< HEAD
 └── docker-compose.yml
+=======
+├── docker-compose.yml          # local dev
+├── docker-compose.prod.yml     # EC2 production (nginx + named volumes)
+├── .env.production.example     # production env template
+├── deploy/
+│   ├── nginx/nginx.conf        # reverse proxy + SSE config
+│   └── systemd/transittwin.service
+├── scripts/
+│   ├── deploy-ec2.sh
+│   ├── update-ec2.sh
+│   └── logs.sh
+└── DEPLOYMENT_AWS_EC2.md
+>>>>>>> 3e2bbc2 (feat(deployment): add AWS EC2 CI/CD and production deployment infrastructure)
 ```
 
 ---
@@ -243,7 +262,11 @@ Interactive docs: **http://localhost:8000/docs**
 
 ## Environment Variables
 
+<<<<<<< HEAD
 ### Backend (`backend/.env`)
+=======
+### Backend (`backend/.env` for local / `.env.production` for EC2)
+>>>>>>> 3e2bbc2 (feat(deployment): add AWS EC2 CI/CD and production deployment infrastructure)
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
@@ -253,12 +276,22 @@ Interactive docs: **http://localhost:8000/docs**
 | `DIGITRANSIT_API_KEY` | ⬜ | `""` | HSL Digitransit subscription key |
 | `USE_MOCK_SEED` | ⬜ | `false` | Skip Digitransit, use bundled fixtures |
 | `GTFS_RT_BASE_URL` | ⬜ | `https://realtime.hsl.fi/realtime` | GTFS-RT feed base URL |
+<<<<<<< HEAD
 
 ### Frontend (`frontend/.env.local`)
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `NEXT_PUBLIC_API_URL` | ⬜ | `http://localhost:8000` | Backend base URL |
+=======
+| `BACKEND_CORS_ORIGINS` | ⬜ | `*` | Comma-separated allowed origins (set to your domain in production) |
+
+### Frontend (`frontend/.env.local` for local / build arg in production)
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `NEXT_PUBLIC_API_URL` | ⬜ | `http://localhost:8000` | Backend base URL (baked into the Next.js bundle at build time) |
+>>>>>>> 3e2bbc2 (feat(deployment): add AWS EC2 CI/CD and production deployment infrastructure)
 
 ---
 
@@ -280,7 +313,48 @@ If the Digitransit seed is available, the `hsl:route_modes` Redis key takes prio
 
 ## Deployment
 
+<<<<<<< HEAD
 The project targets **AWS EKS** (`eu-north-1` / Stockholm) so the backend has direct access to the geo-restricted HSL GTFS-RT feeds without a VPN. Kubernetes manifests are in `k8s/` (Step 11).
+=======
+### EC2 + GitHub Actions — automated CI/CD
+
+Every push to `main` automatically builds both Docker images on the Actions runner, pushes them to Amazon ECR, and deploys to EC2 — no manual steps after initial setup.
+
+```
+push to main
+  → GitHub Actions builds backend + frontend images
+  → pushes to Amazon ECR (eu-north-1)
+  → SSHs into EC2 → docker pull → docker compose up -d --no-build
+```
+
+**GitHub secrets required:** `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `EC2_HOST`, `EC2_SSH_KEY`, `NEXT_PUBLIC_API_URL`
+
+Workflow: [.github/workflows/deploy.yml](.github/workflows/deploy.yml)  
+Full setup guide (ECR repos, IAM policy, EC2 IAM role, first deploy): **[DEPLOYMENT_AWS_EC2.md](DEPLOYMENT_AWS_EC2.md)**
+
+### EC2 manual deploy (first time or without CI)
+
+```bash
+cp .env.production.example .env.production
+nano .env.production   # fill in GROQ_API_KEY, POSTGRES_PASSWORD, NEXT_PUBLIC_API_URL
+
+docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+```
+
+Nginx is the only public entrypoint (ports 80/443). PostgreSQL and Redis have no public ports.
+
+### Local dev
+
+```bash
+docker compose up --build
+```
+
+| Service | URL |
+|---|---|
+| Frontend | http://localhost:3000 |
+| Backend API | http://localhost:8000 |
+| API docs | http://localhost:8000/docs |
+>>>>>>> 3e2bbc2 (feat(deployment): add AWS EC2 CI/CD and production deployment infrastructure)
 
 Each service has a multi-stage `Dockerfile`; the frontend uses `output: "standalone"` for minimal image size.
 

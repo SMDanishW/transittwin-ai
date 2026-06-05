@@ -1,0 +1,81 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [main]
+
+env:
+  AWS_REGION: eu-north-1
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push backend image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build \
+            -t $ECR_REGISTRY/transittwin-backend:$IMAGE_TAG \
+            -t $ECR_REGISTRY/transittwin-backend:latest \
+            ./backend
+          docker push $ECR_REGISTRY/transittwin-backend:$IMAGE_TAG
+          docker push $ECR_REGISTRY/transittwin-backend:latest
+
+      - name: Build and push frontend image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
+            -t $ECR_REGISTRY/transittwin-frontend:$IMAGE_TAG \
+            -t $ECR_REGISTRY/transittwin-frontend:latest \
+            ./frontend
+          docker push $ECR_REGISTRY/transittwin-frontend:$IMAGE_TAG
+          docker push $ECR_REGISTRY/transittwin-frontend:latest
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: ECR_REGISTRY,IMAGE_TAG,AWS_REGION
+          script: |
+            cd /opt/transittwin
+
+            # Authenticate Docker to ECR using the instance's IAM role
+            aws ecr get-login-password --region $AWS_REGION | \
+              docker login --username AWS --password-stdin $ECR_REGISTRY
+
+            # Pull the new images (backend shared by backend + worker)
+            docker pull $ECR_REGISTRY/transittwin-backend:$IMAGE_TAG
+            docker pull $ECR_REGISTRY/transittwin-frontend:$IMAGE_TAG
+
+            # Restart with the new images — no rebuild on the server
+            BACKEND_IMAGE=$ECR_REGISTRY/transittwin-backend:$IMAGE_TAG \
+            FRONTEND_IMAGE=$ECR_REGISTRY/transittwin-frontend:$IMAGE_TAG \
+            docker compose -f docker-compose.prod.yml --env-file .env.production up -d --no-build
+
+            # Remove dangling images from previous deploys
+            docker image prune -f

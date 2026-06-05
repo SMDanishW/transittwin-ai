@@ -16,6 +16,13 @@ class Settings(BaseSettings):
     )
     GTFS_RT_BASE_URL: str = "https://realtime.hsl.fi/realtime"
 
+<<<<<<< HEAD
+=======
+    # Comma-separated list of allowed CORS origins.
+    # Use "*" for development. In production set to your frontend domain.
+    BACKEND_CORS_ORIGINS: str = "*"
+
+>>>>>>> 3e2bbc2 (feat(deployment): add AWS EC2 CI/CD and production deployment infrastructure)
     class Config:
         env_file = ".env"
 

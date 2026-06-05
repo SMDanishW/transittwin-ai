@@ -3,6 +3,10 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+<<<<<<< HEAD
+=======
+from app.config import settings
+>>>>>>> 3e2bbc2 (feat(deployment): add AWS EC2 CI/CD and production deployment infrastructure)
 from app.database import AsyncSessionLocal, init_db
 from app.redis_client import close_redis, get_redis
 from app.routers import agent, alerts, routes, simulation, sse, stops, vehicles
@@ -17,9 +21,17 @@ app = FastAPI(
     version="0.1.0",
 )
 
+<<<<<<< HEAD
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+=======
+_cors_origins = [o.strip() for o in settings.BACKEND_CORS_ORIGINS.split(",")]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+>>>>>>> 3e2bbc2 (feat(deployment): add AWS EC2 CI/CD and production deployment infrastructure)
     allow_methods=["*"],
     allow_headers=["*"],
 )

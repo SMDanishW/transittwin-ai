@@ -66,3 +66,9 @@ desktop.ini
 *.pfx
 secrets/
 plan.md
+<<<<<<< HEAD
+=======
+
+# ── Production env (never commit real secrets) ────────────────────────────────
+.env.production
+>>>>>>> 3e2bbc2 (feat(deployment): add AWS EC2 CI/CD and production deployment infrastructure)
